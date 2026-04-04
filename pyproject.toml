@@ -27,6 +27,7 @@ dependencies = [
     "huggingface-hub[hf-xet]>=0.36.2",
     "gguf>=0.6.0",
     "sentencepiece>=0.2.0",
+    "replicate>=1.0.7",
 ]
 
 [tool.uv]

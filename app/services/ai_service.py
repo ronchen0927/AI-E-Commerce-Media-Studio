@@ -165,8 +165,7 @@ def _load_firered_model() -> tuple[Any, Any]:
         # Load GGUF quantized model via diffusers
         # FireRed-Image-Edit-1.1 uses QwenImageTransformer2DModel (60 double
         # blocks, no single blocks).
-        from diffusers import QwenImageTransformer2DModel, GGUFQuantizationConfig
-        from transformers import T5EncoderModel, BitsAndBytesConfig
+        from diffusers import GGUFQuantizationConfig, QwenImageTransformer2DModel
 
         logger.info(
             f"Loading FireRed-Image-Edit-1.1 GGUF model from {model_path} "
@@ -234,7 +233,18 @@ class BackgroundRemovalService(AIService):
 
     async def process(self, image_path: str, **kwargs: str) -> str:
         """Remove background from an image. API first, local fallback."""
-        if self.api_url:
+        settings = get_settings()
+
+        if settings.replicate_api_token:
+            try:
+                return await self._process_replicate(image_path)
+            except Exception as e:
+                import traceback
+
+                logger.warning(f"Replicate RMBG failed: {e}")
+                logger.warning(f"Full traceback:\n{traceback.format_exc()}")
+
+        elif self.api_url:
             try:
                 return await self._process_api(image_path)
             except Exception as e:
@@ -341,6 +351,38 @@ class BackgroundRemovalService(AIService):
                 f.write(base64.b64decode(result_b64))
             return str(output_path)
 
+    async def _process_replicate(self, image_path: str) -> str:
+        """Process using Replicate API."""
+        import os
+
+        import httpx
+        import replicate
+
+        settings = get_settings()
+        os.environ["REPLICATE_API_TOKEN"] = settings.replicate_api_token
+
+        logger.info("Sending image to Replicate RMBG API...")
+        with open(image_path, "rb") as file_obj:
+            output_url = await replicate.async_run(
+                "lucataco/bria-rmbg-1.4", input={"image": file_obj}
+            )
+
+        if isinstance(output_url, list) and len(output_url) > 0:
+            output_url = str(output_url[0])
+        else:
+            output_url = str(output_url)
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.get(output_url)
+            response.raise_for_status()
+
+            output_path = Path(image_path).parent / "bg_removed.png"
+            with open(output_path, "wb") as f:
+                f.write(response.content)
+
+            logger.info(f"Replicate RMBG completed: {output_path}")
+            return str(output_path)
+
     async def _process_placeholder(self, image_path: str) -> str:
         """Placeholder: simply converts image to RGBA."""
         output_path = Path(image_path).parent / "bg_removed.png"
@@ -380,7 +422,18 @@ class FireRedEditService(AIService):
             "soft studio lighting, sharp focus, photorealistic",
         )
 
-        if self.api_url:
+        settings = get_settings()
+
+        if settings.replicate_api_token:
+            try:
+                return await self._process_replicate(image_path, instruction)
+            except Exception as e:
+                import traceback
+
+                logger.warning(f"Replicate API failed: {e}")
+                logger.warning(f"Full traceback:\n{traceback.format_exc()}")
+
+        elif self.api_url:
             try:
                 return await self._process_api(image_path, instruction)
             except Exception as e:
@@ -494,6 +547,62 @@ class FireRedEditService(AIService):
             output_path = Path(image_path).parent / "edited.png"
             with open(output_path, "wb") as f:
                 f.write(base64.b64decode(result_b64))
+            return str(output_path)
+
+    async def _process_replicate(self, image_path: str, instruction: str) -> str:
+        """Process using Replicate API."""
+        import io
+        import os
+
+        import httpx
+        import replicate
+        from PIL import Image
+
+        settings = get_settings()
+        # Set REPLICATE_API_TOKEN environment variable required by the replicate SDK
+        os.environ["REPLICATE_API_TOKEN"] = settings.replicate_api_token
+
+        # 1. Resize image to max 1024 to save bandwidth and prevent API overflow
+        source_img = Image.open(image_path).convert("RGB")
+        max_side = 1024
+        w, h = source_img.size
+        scale = min(max_side / w, max_side / h, 1.0)
+        new_w = int(w * scale) // 64 * 64
+        new_h = int(h * scale) // 64 * 64
+        if new_w == 0:
+            new_w = 64
+        if new_h == 0:
+            new_h = 64
+        source_img = source_img.resize((new_w, new_h), Image.Resampling.LANCZOS)
+
+        # Save to memory buffer
+        img_byte_arr = io.BytesIO()
+        source_img.save(img_byte_arr, format="PNG")
+        img_byte_arr.seek(0)
+
+        # 2. Call Replicate API
+        logger.info(f"Sending image ({new_w}x{new_h}) to Replicate API...")
+        output_url = await replicate.async_run(
+            "prunaai/firered-image-edit-1.1",
+            input={"image": img_byte_arr, "prompt": instruction},
+        )
+
+        # Output from this model is typically a single URL string or a list containing one URL
+        if isinstance(output_url, list) and len(output_url) > 0:
+            output_url = str(output_url[0])
+        else:
+            output_url = str(output_url)
+
+        # 3. Download the result
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            response = await client.get(output_url)
+            response.raise_for_status()
+
+            output_path = Path(image_path).parent / "edited.png"
+            with open(output_path, "wb") as f:
+                f.write(response.content)
+
+            logger.info(f"Replicate API editing completed: {output_path}")
             return str(output_path)
 
 

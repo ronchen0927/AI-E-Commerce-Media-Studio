@@ -1,4 +1,5 @@
 """Unit tests for AI services."""
+
 from pathlib import Path
 
 import pytest
@@ -48,13 +49,9 @@ class TestFireRedEditService:
     @pytest.fixture
     def service(self) -> FireRedEditService:
         """Create service instance without API URL."""
-        return FireRedEditService(
-            api_url=None, use_local_model=False
-        )
+        return FireRedEditService(api_url=None, use_local_model=False)
 
-    def test_service_creation(
-        self, service: FireRedEditService
-    ) -> None:
+    def test_service_creation(self, service: FireRedEditService) -> None:
         """Test FireRedEditService can be instantiated."""
         assert not service.api_url  # Empty string or None
         assert service.use_local_model is False

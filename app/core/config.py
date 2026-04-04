@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     rmbg_api_key: str = ""
     firered_api_url: str = ""
     firered_api_key: str = ""
+    replicate_api_token: str = ""
     firered_model_path: str = ""  # Path to local GGUF model file
     ai_api_timeout: float = 180.0
     ai_api_max_retries: int = 3

@@ -1,4 +1,5 @@
 """Unit tests for task schemas."""
+
 from datetime import datetime, timezone
 
 from app.schemas.task import (

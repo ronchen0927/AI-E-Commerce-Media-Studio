@@ -1,4 +1,5 @@
 """Integration tests for API endpoints."""
+
 from io import BytesIO
 from typing import Generator
 from unittest.mock import MagicMock, patch
@@ -57,9 +58,7 @@ class TestUploadEndpoint:
         """Test successful image upload."""
         response = client.post(
             "/api/v1/upload",
-            files={
-                "file": ("test.png", sample_image_bytes, "image/png")
-            },
+            files={"file": ("test.png", sample_image_bytes, "image/png")},
         )
 
         assert response.status_code == 200
@@ -80,9 +79,7 @@ class TestUploadEndpoint:
         """Test upload with edit instruction."""
         response = client.post(
             "/api/v1/upload",
-            files={
-                "file": ("test.png", sample_image_bytes, "image/png")
-            },
+            files={"file": ("test.png", sample_image_bytes, "image/png")},
             data={
                 "mode": "edit",
                 "instruction": "Place on marble table",
@@ -102,9 +99,7 @@ class TestUploadEndpoint:
         """Test upload with remove_bg mode."""
         response = client.post(
             "/api/v1/upload",
-            files={
-                "file": ("test.png", sample_image_bytes, "image/png")
-            },
+            files={"file": ("test.png", sample_image_bytes, "image/png")},
             data={"mode": "remove_bg"},
         )
 
@@ -121,23 +116,17 @@ class TestUploadEndpoint:
         """Test upload with invalid mode returns 400."""
         response = client.post(
             "/api/v1/upload",
-            files={
-                "file": ("test.png", sample_image_bytes, "image/png")
-            },
+            files={"file": ("test.png", sample_image_bytes, "image/png")},
             data={"mode": "invalid_mode"},
         )
 
         assert response.status_code == 400
 
-    def test_upload_non_image(
-        self, client: TestClient, mock_celery: MagicMock
-    ) -> None:
+    def test_upload_non_image(self, client: TestClient, mock_celery: MagicMock) -> None:
         """Test upload rejects non-image files."""
         response = client.post(
             "/api/v1/upload",
-            files={
-                "file": ("test.txt", b"not an image", "text/plain")
-            },
+            files={"file": ("test.txt", b"not an image", "text/plain")},
         )
 
         assert response.status_code == 400
@@ -147,13 +136,9 @@ class TestUploadEndpoint:
 class TestTaskStatusEndpoint:
     """Tests for task status endpoint."""
 
-    def test_task_status_not_found(
-        self, client: TestClient
-    ) -> None:
+    def test_task_status_not_found(self, client: TestClient) -> None:
         """Test status for non-existent task."""
-        response = client.get(
-            "/api/v1/task-status/nonexistent-id"
-        )
+        response = client.get("/api/v1/task-status/nonexistent-id")
 
         assert response.status_code == 404
         assert "not found" in response.json()["detail"].lower()
@@ -168,16 +153,12 @@ class TestTaskStatusEndpoint:
         # Upload first
         upload_response = client.post(
             "/api/v1/upload",
-            files={
-                "file": ("test.png", sample_image_bytes, "image/png")
-            },
+            files={"file": ("test.png", sample_image_bytes, "image/png")},
         )
         task_id = upload_response.json()["task_id"]
 
         # Check status
-        status_response = client.get(
-            f"/api/v1/task-status/{task_id}"
-        )
+        status_response = client.get(f"/api/v1/task-status/{task_id}")
 
         assert status_response.status_code == 200
         data = status_response.json()
@@ -205,9 +186,7 @@ class TestResultEndpoint:
         # Upload first
         upload_response = client.post(
             "/api/v1/upload",
-            files={
-                "file": ("test.png", sample_image_bytes, "image/png")
-            },
+            files={"file": ("test.png", sample_image_bytes, "image/png")},
         )
         task_id = upload_response.json()["task_id"]
 
