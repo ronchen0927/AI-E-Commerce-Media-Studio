@@ -102,7 +102,11 @@ def _load_rmbg_model() -> tuple[Any, Any]:
 
     _orig_gcfdm = _af.get_class_from_dynamic_module  # type: ignore[attr-defined]
 
-    def _patched_gcfdm(class_reference: Any, pretrained_model_name_or_path: Any, **kwargs: Any) -> Any:  # type: ignore[misc]
+    def _patched_gcfdm(  # type: ignore[misc]
+        class_reference: Any,
+        pretrained_model_name_or_path: Any,
+        **kwargs: Any,
+    ) -> Any:
         cls = _orig_gcfdm(class_reference, pretrained_model_name_or_path, **kwargs)
         try:
             if getattr(cls, "__name__", None) == "BriaRMBG":
