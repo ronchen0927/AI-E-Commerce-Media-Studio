@@ -368,7 +368,7 @@ class BackgroundRemovalService(AIService):
         logger.info("Sending image to Replicate RMBG API...")
         with open(image_path, "rb") as file_obj:
             output_url = await replicate.async_run(
-                "lucataco/bria-rmbg-1.4", input={"image": file_obj}
+                "bria/remove-background", input={"image": file_obj}
             )
 
         if isinstance(output_url, list) and len(output_url) > 0:
@@ -587,7 +587,7 @@ class FireRedEditService(AIService):
         # 2. Call Replicate API
         logger.info(f"Sending image ({new_w}x{new_h}) to Replicate API...")
         output_url = await replicate.async_run(
-            "prunaai/firered-image-edit-1.1",
+            "prunaai/firered-image-edit-1.1:2275e825ae9ed8a17168e0ea82ae6722fe60ca25652bb9e61b98887eb0ad5bcc",
             input={"image": img_byte_arr, "prompt": instruction},
         )
 
