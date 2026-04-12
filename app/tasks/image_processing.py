@@ -10,7 +10,7 @@ import asyncio
 import shutil
 import tempfile
 from pathlib import Path
-from typing import Any, Coroutine, Optional, TypeVar
+from typing import Optional
 
 from celery import Task
 
@@ -19,6 +19,7 @@ from app.core.config import get_settings
 from app.schemas.task import TaskMode, TaskStatus
 from app.services.ai_service import AIServiceFactory
 from app.services.storage import GCSStorage, LocalStorage, StorageService
+
 
 class ImageProcessingTask(Task):  # type: ignore[misc]
     """Base task class for image processing with status updates."""

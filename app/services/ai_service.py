@@ -371,9 +371,9 @@ class BackgroundRemovalService(AIService):
         os.environ["REPLICATE_API_TOKEN"] = settings.replicate_api_token
 
         logger.info("Sending image to Replicate RMBG API...")
-        client = replicate.Client(api_token=settings.replicate_api_token)
+        rep_client = replicate.Client(api_token=settings.replicate_api_token)  # type: ignore[attr-defined]
         with open(image_path, "rb") as file_obj:
-            output_url = await client.async_run(
+            output_url = await rep_client.async_run(
                 "bria/remove-background", input={"image": file_obj}
             )
 
@@ -382,8 +382,8 @@ class BackgroundRemovalService(AIService):
         else:
             output_url = str(output_url)
 
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.get(output_url)
+        async with httpx.AsyncClient(timeout=60.0) as http_client:
+            response = await http_client.get(output_url)
             response.raise_for_status()
 
             output_path = Path(image_path).parent / "bg_removed.png"
@@ -593,8 +593,8 @@ class FireRedEditService(AIService):
 
         # 2. Call Replicate API
         logger.info(f"Sending image ({new_w}x{new_h}) to Replicate API...")
-        client = replicate.Client(api_token=settings.replicate_api_token)
-        output_url = await client.async_run(
+        rep_client = replicate.Client(api_token=settings.replicate_api_token)  # type: ignore[attr-defined]
+        output_url = await rep_client.async_run(
             "prunaai/firered-image-edit-1.1:2275e825ae9ed8a17168e0ea82ae6722fe60ca25652bb9e61b98887eb0ad5bcc",
             input={"image": [img_byte_arr], "prompt": instruction},
         )
@@ -607,8 +607,8 @@ class FireRedEditService(AIService):
             output_url = str(output_url)
 
         # 3. Download the result
-        async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.get(output_url)
+        async with httpx.AsyncClient(timeout=60.0) as http_client:
+            response = await http_client.get(output_url)
             response.raise_for_status()
 
             output_path = Path(image_path).parent / "edited.png"
