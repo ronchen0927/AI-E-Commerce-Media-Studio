@@ -6,6 +6,7 @@ import logging
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import Any
 
 import httpx
 import replicate
@@ -27,7 +28,7 @@ class VideoServiceError(Exception):
     pass
 
 
-def _build_input(model: str, img_bytes: bytes, scene: "VideoScene") -> dict:
+def _build_input(model: str, img_bytes: bytes, scene: "VideoScene") -> dict[str, Any]:
     """Build Replicate input dict for the configured video model."""
     if "wan" in model.lower():
         fps = 16
