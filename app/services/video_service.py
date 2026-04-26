@@ -2,6 +2,8 @@
 
 import io
 import logging
+import subprocess
+import tempfile
 from pathlib import Path
 
 import httpx
@@ -68,4 +70,34 @@ class VideoService:
         return clip_path
 
     def concatenate_clips(self, clip_paths: list[str], output_path: str) -> str:
-        raise NotImplementedError
+        filelist = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", delete=False
+        )
+        try:
+            for path in clip_paths:
+                filelist.write(f"file '{path}'\n")
+            filelist.flush()
+            filelist.close()
+
+            try:
+                subprocess.run(
+                    [
+                        "ffmpeg",
+                        "-f", "concat",
+                        "-safe", "0",
+                        "-i", filelist.name,
+                        "-c", "copy",
+                        output_path,
+                        "-y",
+                    ],
+                    check=True,
+                    capture_output=True,
+                )
+            except subprocess.CalledProcessError as e:
+                stderr = e.stderr.decode() if e.stderr else ""
+                raise VideoServiceError(f"FFmpeg concatenation failed: {stderr}") from e
+        finally:
+            Path(filelist.name).unlink(missing_ok=True)
+
+        logger.info(f"Clips concatenated: {output_path}")
+        return output_path

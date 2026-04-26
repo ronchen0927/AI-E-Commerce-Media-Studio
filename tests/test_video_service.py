@@ -1,13 +1,14 @@
 """Unit tests for VideoService."""
 
 import os
+import subprocess
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from app.schemas.video import VideoScene
-from app.services.video_service import VideoService
+from app.services.video_service import VideoService, VideoServiceError
 
 
 @pytest.fixture
@@ -98,3 +99,45 @@ class TestGenerateClip:
                     output_dir=str(output_dir),
                     clip_index=0,
                 )
+
+
+class TestConcatenateClips:
+    def test_concatenate_writes_output(self, tmp_path: Path) -> None:
+        clip_paths = [str(tmp_path / f"clip_0{i}.mp4") for i in range(3)]
+        for p in clip_paths:
+            Path(p).write_bytes(b"fake")
+
+        output_path = str(tmp_path / "final.mp4")
+
+        with patch("app.services.video_service.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
+            service = VideoService(
+                replicate_token="test-token",
+                video_model="minimax/video-01",
+            )
+            result = service.concatenate_clips(clip_paths, output_path)
+
+        assert result == output_path
+        mock_run.assert_called_once()
+        call_args = mock_run.call_args[0][0]
+        assert "ffmpeg" in call_args
+        assert "-f" in call_args
+        assert "concat" in call_args
+
+    def test_concatenate_raises_on_ffmpeg_error(
+        self, tmp_path: Path
+    ) -> None:
+        clip_paths = [str(tmp_path / "clip_00.mp4")]
+        Path(clip_paths[0]).write_bytes(b"fake")
+        output_path = str(tmp_path / "final.mp4")
+
+        with patch("app.services.video_service.subprocess.run") as mock_run:
+            mock_run.side_effect = subprocess.CalledProcessError(
+                1, "ffmpeg", stderr=b"error"
+            )
+            service = VideoService(
+                replicate_token="test-token",
+                video_model="minimax/video-01",
+            )
+            with pytest.raises(VideoServiceError, match="FFmpeg"):
+                service.concatenate_clips(clip_paths, output_path)
