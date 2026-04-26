@@ -70,28 +70,20 @@ async def _process_video_async(
 
         task.update_progress(0, len(scenes), [])
 
-        clip_results = await asyncio.gather(
-            *[
-                video_service.generate_clip(
+        successful_clips: list[str] = []
+        failed_indices: list[int] = []
+        for i, scene in enumerate(scenes):
+            try:
+                clip_path = await video_service.generate_clip(
                     image_path=str(local_image),
                     scene=scene,
                     output_dir=str(clips_dir),
                     clip_index=i,
                 )
-                for i, scene in enumerate(scenes)
-            ],
-            return_exceptions=True,
-        )
-
-        successful_clips: list[str] = []
-        failed_indices: list[int] = []
-        for i, result in enumerate(clip_results):
-            if isinstance(result, Exception):
+                successful_clips.append(clip_path)
+            except Exception:
                 failed_indices.append(i)
-            else:
-                successful_clips.append(str(result))
-
-        task.update_progress(len(successful_clips), len(scenes), failed_indices)
+            task.update_progress(len(successful_clips), len(scenes), failed_indices)
 
         if not successful_clips:
             raise RuntimeError("All clips failed to generate")

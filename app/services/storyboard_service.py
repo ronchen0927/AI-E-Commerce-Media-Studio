@@ -1,4 +1,4 @@
-"""Storyboard generation service using GPT-4o Vision."""
+"""Storyboard generation service using GPT-5.4-mini Vision."""
 
 import asyncio
 import base64
@@ -134,7 +134,9 @@ class StoryboardService:
                 num_scenes,
             )
         except Exception as e:
-            logger.warning(f"GPT-4o storyboard generation failed, using template: {e}")
+            logger.warning(
+                f"GPT-5.4-mini storyboard generation failed, using template: {e}"
+            )
             return self._template_storyboard(image_storage_path, style, num_scenes)
 
     def _generate_sync(
@@ -151,7 +153,7 @@ class StoryboardService:
         mime = mime or "image/png"
 
         response = self._client.chat.completions.create(
-            model="gpt-4o",
+            model="gpt-5.4-mini",
             response_format={"type": "json_object"},
             messages=[
                 {"role": "system", "content": _SYSTEM_PROMPT},

@@ -27,10 +27,18 @@ class StoryboardResponse(BaseModel):
 
 
 class VideoGenerateRequest(BaseModel):
-    """Request body for POST /api/v1/video/generate."""
+    """Request body for POST /api/v1/video/generate.
+
+    Accepts the full StoryboardResponse shape so the client can pass it through
+    directly without stripping fields. Extra fields (product_summary, style,
+    source) are accepted but not used by the video pipeline.
+    """
 
     image_path: str
     scenes: list[VideoScene]
+    product_summary: Optional[str] = None
+    style: Optional[str] = None
+    source: Optional[Literal["ai", "template"]] = None
 
     @field_validator("scenes")
     @classmethod
