@@ -103,26 +103,42 @@ class TestGenerateClip:
 
 
 class TestConcatenateClips:
-    def test_concatenate_writes_output(self, tmp_path: Path) -> None:
+    def test_concatenate_multiple_clips_uses_xfade(self, tmp_path: Path) -> None:
         clip_paths = [str(tmp_path / f"clip_0{i}.mp4") for i in range(3)]
         for p in clip_paths:
             Path(p).write_bytes(b"fake")
 
         output_path = str(tmp_path / "final.mp4")
 
+        mock_ffprobe = MagicMock(returncode=0)
+        mock_ffprobe.stdout = "5.0\n"
+        mock_ffmpeg = MagicMock(returncode=0)
+
         with patch("app.services.video_service.subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(returncode=0)
-            service = VideoService(
-                replicate_token="test-token",
-                video_model="minimax/video-01",
-            )
+            mock_run.side_effect = [mock_ffprobe, mock_ffprobe, mock_ffprobe, mock_ffmpeg]
+            service = VideoService(replicate_token="test-token", video_model="minimax/video-01")
             result = service.concatenate_clips(clip_paths, output_path)
 
         assert result == output_path
-        mock_run.assert_called_once()
+        # Last call should be the ffmpeg xfade call
+        last_call_args = mock_run.call_args_list[-1][0][0]
+        assert "ffmpeg" in last_call_args
+        assert "-filter_complex" in last_call_args
+        assert any("xfade" in str(a) for a in last_call_args)
+
+    def test_concatenate_single_clip_uses_simple_concat(self, tmp_path: Path) -> None:
+        clip_paths = [str(tmp_path / "clip_00.mp4")]
+        Path(clip_paths[0]).write_bytes(b"fake")
+        output_path = str(tmp_path / "final.mp4")
+
+        with patch("app.services.video_service.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0)
+            service = VideoService(replicate_token="test-token", video_model="minimax/video-01")
+            result = service.concatenate_clips(clip_paths, output_path)
+
+        assert result == output_path
         call_args = mock_run.call_args[0][0]
         assert "ffmpeg" in call_args
-        assert "-f" in call_args
         assert "concat" in call_args
 
     def test_concatenate_raises_on_ffmpeg_error(self, tmp_path: Path) -> None:
