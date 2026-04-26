@@ -54,7 +54,7 @@ uv run mypy .
 | `app/tasks/video_processing.py` | Celery task `process_video`; generates clips **sequentially** then concatenates with FFmpeg; exceptions are caught and returned as `{"status": "FAILED"}` dicts so Celery records `SUCCESS` state — status endpoint must check `result["status"]` |
 | `app/services/ai_service.py` | `BackgroundRemovalService` and `FireRedEditService` (both extend `AIService`); AI models are **lazy-loaded** into module-level globals (`_rmbg_model`, `_firered_pipe`) on first use |
 | `app/services/storyboard_service.py` | Calls GPT-5.4-mini Vision to generate a shot-by-shot storyboard; falls back to a built-in template if the OpenAI call fails or returns invalid JSON |
-| `app/services/video_service.py` | `generate_clip()` — uploads image to Replicate, polls until done, downloads MP4; retries up to 3× on 429 with 10 / 30 / 90 s backoff. `concatenate_clips()` — FFmpeg concat demuxer |
+| `app/services/video_service.py` | `generate_clip()` — uploads image to Replicate, polls until done, downloads MP4; retries up to 3× on 429 with 10 / 30 / 90 s backoff. `extract_last_frame()` — extracts last frame of a clip via `ffmpeg -sseof` for next-clip conditioning. `concatenate_clips()` — xfade crossfade with hard-cut fallback |
 | `app/services/storage.py` | `StorageService` interface with `LocalStorage` and `GCSStorage` implementations |
 | `app/core/auth.py` | API key + JWT auth and rate limiting; both are **feature-flagged off by default** (`AUTH_ENABLED=false`, `RATE_LIMIT_ENABLED=false`) |
 
@@ -71,6 +71,10 @@ uv run mypy .
 - **Video task failure encoding**: `process_video` never raises — it catches all exceptions and returns `{"status": "FAILED", "error": ...}`. This means Celery always records `SUCCESS`. The status endpoint must inspect `result["status"]` in addition to `AsyncResult.state` to distinguish a real completion from a silent failure.
 
 - **Sequential clip generation**: Clips are generated one at a time (not `asyncio.gather`) to avoid Replicate concurrent request limits. Progress is updated after every clip via `task.update_progress()`.
+
+- **Clip transition continuity**: Two-layer approach to smooth scene-to-scene transitions: (1) After each successful clip, `extract_last_frame()` saves the last video frame as a PNG; this frame is passed as Wan's `last_image` input so the next clip visually starts where the previous one ended. (2) `concatenate_clips()` uses FFmpeg `xfade=transition=fade` with `_XFADE_DURATION = 0.5s`; xfade offset per transition = cumulative sum of preceding clip durations minus `n × fade_duration`. Falls back to hard-cut concat if xfade fails (e.g. codec mismatch). On clip failure, `last_frame_path` is reset to `None` so a bad frame is never carried forward.
+
+- **Wan i2v motion-focused prompts**: `storyboard_service.py` prompts describe **how things move**, not what they look like — the input image already defines all visual content. Prompt structure: `[Subject motion] + [Camera movement] + [Subtle natural effect (optional)] + [Speed modifier]`. Allowed natural effects: highlight glides across a surface, shadow shifts as angle changes, reflections respond to camera angle, shallow depth of field softens slightly. Forbidden: floating particles, magical mist, pulsing bokeh, or any fantasy effects. If you modify `_SYSTEM_PROMPT`, preserve this constraint: never describe color, shape, or appearance in the video prompt.
 
 ### Configuration
 

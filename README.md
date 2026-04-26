@@ -26,7 +26,9 @@ Describe a scene in natural language and the AI places your product in it.
 Turn a single product photo into a multi-scene promotional video in two steps:
 
 1. **Storyboard** — upload the photo and GPT-5.4-mini Vision generates a cinematic shot list (shot type, camera motion, duration, prompt per scene). Falls back to a built-in template if the API is unavailable.
-2. **Generate** — submit the storyboard to kick off a Celery background job that calls Replicate `wan-video/wan-2.2-i2v-fast` for each scene sequentially, then concatenates the clips with FFmpeg into a single MP4.
+2. **Generate** — submit the storyboard to kick off a Celery background job that calls Replicate `wan-video/wan-2.2-i2v-fast` for each scene sequentially, then concatenates the clips into a single MP4 with smooth crossfade transitions.
+
+Transitions are handled at two levels: each clip is conditioned on the last frame of the previous clip (Wan `last_image`), and the final video is assembled with an FFmpeg `xfade` crossfade (0.5 s fade between each scene).
 
 ```bash
 # Step 1 — generate storyboard
@@ -208,7 +210,7 @@ Both AI services follow an **API-first, local-fallback** strategy — configure 
 - **Flexible Compute Architecture** — Zero-cost local GPU inference for development, cloud APIs for production.
 - **Background Removal** — RMBG-1.4 with API-first, local GPU fallback.
 - **Instruction-based Image Editing** — FireRed-Image-Edit-1.1 with API-first, local GGUF fallback.
-- **Product Video Generation** — GPT-5.4-mini Vision storyboard + Replicate `wan-video/wan-2.2-i2v-fast` clips + FFmpeg concat; sequential generation with 429 rate-limit retry.
+- **Product Video Generation** — GPT-5.4-mini Vision storyboard + Replicate `wan-video/wan-2.2-i2v-fast` clips + FFmpeg xfade concat; sequential generation with 429 rate-limit retry; smooth transitions via Wan `last_image` conditioning + 0.5 s crossfade.
 - **Async Processing** — Celery + Redis task queue isolates long-running AI tasks.
 - **Storage** — Local filesystem with a modular interface for GCS migration.
 - **Auth & Rate Limiting** — API Key, JWT, and configurable rate limiting (feature-flagged).
@@ -362,7 +364,7 @@ FIRERED_MODEL_PATH=
 
 # Video generation
 OPENAI_API_KEY=                          # GPT-5.4-mini Vision storyboard generation
-REPLICATE_VIDEO_MODEL=wan-video/wan-2.2-i2v-720p   # Replicate model for clip generation
+REPLICATE_VIDEO_MODEL=wan-video/wan-2.2-i2v-fast   # Replicate model for clip generation
 ```
 
 ### Development

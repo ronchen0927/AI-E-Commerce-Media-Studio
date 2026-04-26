@@ -72,6 +72,8 @@ async def _process_video_async(
 
         successful_clips: list[str] = []
         failed_indices: list[int] = []
+        last_frame_path: str | None = None
+
         for i, scene in enumerate(scenes):
             try:
                 clip_path = await video_service.generate_clip(
@@ -79,10 +81,20 @@ async def _process_video_async(
                     scene=scene,
                     output_dir=str(clips_dir),
                     clip_index=i,
+                    last_frame_path=last_frame_path,
                 )
                 successful_clips.append(clip_path)
+
+                # Extract last frame to condition the next clip's starting point
+                next_last_frame = str(clips_dir / f"last_frame_{i:02d}.png")
+                try:
+                    video_service.extract_last_frame(clip_path, next_last_frame)
+                    last_frame_path = next_last_frame
+                except Exception:
+                    last_frame_path = None
             except Exception:
                 failed_indices.append(i)
+                last_frame_path = None  # don't carry forward from a failed clip
             task.update_progress(len(successful_clips), len(scenes), failed_indices)
 
         if not successful_clips:
