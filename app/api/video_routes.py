@@ -68,9 +68,6 @@ async def generate_storyboard(
 async def generate_video(
     request: VideoGenerateRequest,
 ) -> VideoGenerateResponse:
-    if not request.scenes:
-        raise HTTPException(status_code=422, detail="scenes must not be empty")
-
     task_id = str(uuid.uuid4())
     video_task_store[task_id] = {
         "task_id": task_id,
@@ -100,9 +97,17 @@ async def get_video_status(task_id: str) -> VideoStatusResponse:
 
     if state == "SUCCESS" and celery_result.successful():
         info = celery_result.result or {}
+        task_status = info.get("status", "COMPLETED")
+        if task_status == "FAILED":
+            return VideoStatusResponse(
+                task_id=task_id,
+                status="FAILED",
+                clips_total=metadata["clips_total"],
+                error=info.get("error"),
+            )
         return VideoStatusResponse(
             task_id=task_id,
-            status=info.get("status", "COMPLETED"),
+            status=task_status,
             clips_done=metadata["clips_total"] - len(info.get("clips_failed", [])),
             clips_total=metadata["clips_total"],
             clips_failed=info.get("clips_failed", []),

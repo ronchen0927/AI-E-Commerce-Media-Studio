@@ -2,7 +2,7 @@
 
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class VideoScene(BaseModel):
@@ -31,6 +31,13 @@ class VideoGenerateRequest(BaseModel):
 
     image_path: str
     scenes: list[VideoScene]
+
+    @field_validator("scenes")
+    @classmethod
+    def scenes_not_empty(cls, v: list[VideoScene]) -> list[VideoScene]:
+        if not v:
+            raise ValueError("scenes must not be empty")
+        return v
 
 
 class VideoGenerateResponse(BaseModel):

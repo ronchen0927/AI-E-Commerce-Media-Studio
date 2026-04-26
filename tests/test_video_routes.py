@@ -52,23 +52,25 @@ class TestStoryboardEndpoint:
         sample_image_bytes: bytes,
         sample_storyboard: StoryboardResponse,
     ) -> None:
-        with (
-            patch("app.api.video_routes.StoryboardService") as mock_svc_cls,
-            patch("app.api.video_routes.get_storage_service") as mock_storage_dep,
-        ):
-            mock_storage = MagicMock()
-            mock_storage.upload = AsyncMock(return_value="storage/abc/original.png")
-            mock_storage_dep.return_value = mock_storage
+        from app.api.routes import get_storage_service
 
+        mock_storage = MagicMock()
+        mock_storage.upload = AsyncMock(return_value="storage/abc/original.png")
+
+        with patch("app.api.video_routes.StoryboardService") as mock_svc_cls:
             mock_svc = MagicMock()
             mock_svc.generate = AsyncMock(return_value=sample_storyboard)
             mock_svc_cls.return_value = mock_svc
 
-            response = client.post(
-                "/api/v1/video/storyboard",
-                files={"image": ("product.png", sample_image_bytes, "image/png")},
-                data={"style": "cinematic", "num_scenes": "3"},
-            )
+            app.dependency_overrides[get_storage_service] = lambda: mock_storage
+            try:
+                response = client.post(
+                    "/api/v1/video/storyboard",
+                    files={"image": ("product.png", sample_image_bytes, "image/png")},
+                    data={"style": "cinematic", "num_scenes": "3"},
+                )
+            finally:
+                app.dependency_overrides.pop(get_storage_service, None)
 
         assert response.status_code == 200
         data = response.json()
