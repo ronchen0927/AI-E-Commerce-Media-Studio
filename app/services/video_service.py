@@ -27,6 +27,24 @@ class VideoServiceError(Exception):
     pass
 
 
+def _build_input(model: str, img_bytes: bytes, scene: "VideoScene") -> dict:
+    """Build Replicate input dict for the configured video model."""
+    if "wan" in model.lower():
+        fps = 16
+        num_frames = max(81, min(121, round(scene.duration_seconds * fps)))
+        return {
+            "prompt": scene.prompt,
+            "image": io.BytesIO(img_bytes),
+            "num_frames": num_frames,
+            "frames_per_second": fps,
+        }
+    # minimax/video-01 and compatible models
+    return {
+        "prompt": scene.prompt,
+        "first_frame_image": io.BytesIO(img_bytes),
+    }
+
+
 class VideoService:
     def __init__(self, replicate_token: str, video_model: str) -> None:
         self._replicate_token = replicate_token
@@ -49,11 +67,7 @@ class VideoService:
             try:
                 raw = await rep_client.async_run(
                     self._video_model,
-                    input={
-                        "prompt": scene.prompt,
-                        "first_frame_image": io.BytesIO(img_bytes),
-                        "duration": scene.duration_seconds,
-                    },
+                    input=_build_input(self._video_model, img_bytes, scene),
                 )
                 break
             except Exception as exc:

@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
 
     # Video generation
-    replicate_video_model: str = "minimax/video-01"
+    replicate_video_model: str = "wan-video/wan-2.2-i2v-fast"
     video_clip_time_limit: int = 300  # seconds per clip Celery task
     video_total_time_limit: int = 1800  # seconds for full video job
 

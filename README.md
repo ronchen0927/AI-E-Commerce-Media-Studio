@@ -21,6 +21,32 @@ Describe a scene in natural language and the AI places your product in it.
 | :---: | :---: |
 | <img width="600" height="400" alt="image" src="https://github.com/user-attachments/assets/da303032-8f99-4000-8fc4-dfe5a9c4dd73" /> | <img width="576" height="384" alt="image" src="https://github.com/user-attachments/assets/9ad254f3-260c-4c40-8ef8-6f00b9da7fda" /> |
 
+### Product Video Generation
+
+Turn a single product photo into a multi-scene promotional video in two steps:
+
+1. **Storyboard** — upload the photo and GPT-5.4-mini Vision generates a cinematic shot list (shot type, camera motion, duration, prompt per scene). Falls back to a built-in template if the API is unavailable.
+2. **Generate** — submit the storyboard to kick off a Celery background job that calls Replicate `wan-video/wan-2.2-i2v-fast` for each scene sequentially, then concatenates the clips with FFmpeg into a single MP4.
+
+```bash
+# Step 1 — generate storyboard
+curl -X POST http://localhost:8000/api/v1/video/storyboard \
+  -F "image=@product.jpg" \
+  -F "style=cinematic" \
+  -F "num_scenes=3"
+
+# Step 2 — start video generation (paste scenes from Step 1 response)
+curl -X POST http://localhost:8000/api/v1/video/generate \
+  -H "Content-Type: application/json" \
+  -d '{
+    "image_path": "uploads/<id>/original.jpg",
+    "scenes": [...]
+  }'
+
+# Poll status
+curl http://localhost:8000/api/v1/video/status/<task_id>
+```
+
 ---
 
 ## 🚀 Quick Start
@@ -171,6 +197,7 @@ Both AI services follow an **API-first, local-fallback** strategy — configure 
 - **Flexible Compute Architecture** — Zero-cost local GPU inference for development, cloud APIs for production.
 - **Background Removal** — RMBG-1.4 with API-first, local GPU fallback.
 - **Instruction-based Image Editing** — FireRed-Image-Edit-1.1 with API-first, local GGUF fallback.
+- **Product Video Generation** — GPT-5.4-mini Vision storyboard + Replicate `wan-video/wan-2.2-i2v-fast` clips + FFmpeg concat; sequential generation with 429 rate-limit retry.
 - **Async Processing** — Celery + Redis task queue isolates long-running AI tasks.
 - **Storage** — Local filesystem with a modular interface for GCS migration.
 - **Auth & Rate Limiting** — API Key, JWT, and configurable rate limiting (feature-flagged).
@@ -261,24 +288,35 @@ The application uses Python's `logging` module with structured output. In Cloud 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | GET | `/health` | Health / liveness check |
-| POST | `/api/v1/upload` | Upload image for processing |
-| GET | `/api/v1/task-status/{id}` | Get task status |
-| GET | `/api/v1/result/{id}` | Get processing result |
+| POST | `/api/v1/upload` | Upload image for background removal or editing |
+| GET | `/api/v1/task-status/{id}` | Get image task status |
+| GET | `/api/v1/result/{id}` | Get image processing result |
+| POST | `/api/v1/video/storyboard` | Generate GPT-5.4-mini Vision storyboard from product image |
+| POST | `/api/v1/video/generate` | Start async video generation from storyboard |
+| GET | `/api/v1/video/status/{id}` | Poll video task status and per-clip progress |
 
 ### Project Structure
 
 ```text
 app/
-├── api/routes.py            # FastAPI endpoints
+├── api/
+│   ├── routes.py            # Image processing endpoints
+│   └── video_routes.py      # Video generation endpoints
 ├── core/
 │   ├── auth.py              # Authentication & Rate limiting
 │   ├── config.py            # Settings (pydantic-settings)
 │   └── celery_app.py        # Celery configuration
-├── schemas/task.py          # Pydantic models
+├── schemas/
+│   ├── task.py              # Image task Pydantic models
+│   └── video.py             # Video / storyboard Pydantic models
 ├── services/
-│   ├── ai_service.py        # AI model integrations
-│   └── storage.py           # Storage service
-└── tasks/                   # Celery tasks
+│   ├── ai_service.py        # Background removal & image editing
+│   ├── storyboard_service.py# GPT-5.4-mini Vision storyboard generation
+│   ├── video_service.py     # Replicate clip generation & FFmpeg concat
+│   └── storage.py           # Storage service (local / GCS)
+└── tasks/
+    ├── image_processing.py  # Celery task: image pipeline
+    └── video_processing.py  # Celery task: video pipeline
 tests/                       # pytest test suite
 deploy/
 ├── cloudbuild.yaml          # Cloud Build pipeline (build → push → deploy)
@@ -310,6 +348,10 @@ FIRERED_API_URL=
 FIRERED_API_KEY=
 # Path to local GGUF model file (used when API is unavailable)
 FIRERED_MODEL_PATH=
+
+# Video generation
+OPENAI_API_KEY=                          # GPT-5.4-mini Vision storyboard generation
+REPLICATE_VIDEO_MODEL=wan-video/wan-2.2-i2v-720p   # Replicate model for clip generation
 ```
 
 ### Development
