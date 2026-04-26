@@ -3,6 +3,7 @@
 import asyncio
 import shutil
 import tempfile
+import traceback
 from pathlib import Path
 from typing import Any
 
@@ -32,9 +33,9 @@ class VideoProcessingTask(Task):  # type: ignore[misc]
         )
 
 
-def _get_storage() -> StorageService:
+def _get_storage(image_path: str = "") -> StorageService:
     settings = get_settings()
-    if settings.storage_type == "gcs":
+    if settings.storage_type == "gcs" or image_path.startswith("gs://"):
         return GCSStorage(bucket_name=settings.gcs_bucket_name)
     return LocalStorage(base_dir=Path(settings.local_storage_path))
 
@@ -46,7 +47,7 @@ async def _process_video_async(
     scenes_data: list[dict[str, Any]],
 ) -> dict[str, Any]:
     settings = get_settings()
-    storage = _get_storage()
+    storage = _get_storage(image_path)
 
     temp_dir = Path(tempfile.mkdtemp(prefix=f"video_{task_id}_"))
     local_image = temp_dir / Path(image_path).name
@@ -127,14 +128,17 @@ def process_video(
     image_path: str,
     scenes_data: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Generate video clips in parallel then concatenate into a final MP4."""
+    """Generate video clips in parallel then concatenate into a final MP4.
+
+    Note: exceptions are caught and returned as {"status": "FAILED"} dicts rather than
+    re-raised, so Celery records task state as SUCCESS. Task status endpoint must
+    check result["status"] in addition to AsyncResult.state to detect failures.
+    """
     try:
         return asyncio.run(
             _process_video_async(self, task_id, image_path, scenes_data)
         )
     except Exception as e:
-        import traceback
-
         error_msg = f"{str(e)}\n{traceback.format_exc()}"
         self.update_state(state="FAILURE", meta={"error": error_msg})
         return {
