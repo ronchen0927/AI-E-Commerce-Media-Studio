@@ -31,7 +31,9 @@ def scenes() -> list[dict[str, Any]]:
 
 class TestProcessVideoAsync:
     @pytest.mark.asyncio
-    async def test_all_clips_succeed(self, scenes: list[dict[str, Any]], tmp_path: Path) -> None:
+    async def test_all_clips_succeed(
+        self, scenes: list[dict[str, Any]], tmp_path: Path
+    ) -> None:
         image_path = str(tmp_path / "product.png")
         Path(image_path).write_bytes(b"fake_image")
 
