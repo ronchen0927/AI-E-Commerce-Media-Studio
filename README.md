@@ -23,6 +23,10 @@ Describe a scene in natural language and the AI places your product in it.
 
 ### Product Video Generation
 
+| Original | Result |
+| :---: | :---: |
+| <img width="500" height="500" alt="0736018_PE740345_S4" src="https://github.com/user-attachments/assets/a0219749-cdb5-4561-8f96-751b8c9ca810" /> | https://github.com/user-attachments/assets/7c54f02a-41e8-4775-bfb7-0b5da476af90 |
+
 Turn a single product photo into a multi-scene promotional video in two steps:
 
 1. **Storyboard** — upload the photo and GPT-5.4-mini Vision generates a cinematic shot list (shot type, camera motion, duration, prompt per scene). Falls back to a built-in template if the API is unavailable.
