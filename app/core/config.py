@@ -43,6 +43,14 @@ class Settings(BaseSettings):
     ai_api_timeout: float = 180.0
     ai_api_max_retries: int = 3
 
+    # OpenAI (storyboard generation)
+    openai_api_key: str = ""
+
+    # Video generation
+    replicate_video_model: str = "minimax/video-01"
+    video_clip_time_limit: int = 300   # seconds per clip Celery task
+    video_total_time_limit: int = 1800  # seconds for full video job
+
     # Authentication
     auth_enabled: bool = False
     api_keys: str = ""  # Comma-separated list of valid API keys
