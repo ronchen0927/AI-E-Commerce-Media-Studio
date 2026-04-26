@@ -72,6 +72,8 @@ uv run mypy .
 
 - **Sequential clip generation**: Clips are generated one at a time (not `asyncio.gather`) to avoid Replicate concurrent request limits. Progress is updated after every clip via `task.update_progress()`.
 
+- **Wan i2v motion-focused prompts**: `storyboard_service.py` prompts describe **how things move**, not what they look like — the input image already defines all visual content. Prompt structure: `[Subject motion] + [Camera movement] + [Environmental effects] + [Speed modifier]`. If you modify `_SYSTEM_PROMPT`, preserve this constraint: never describe color, shape, or appearance in the video prompt.
+
 ### Configuration
 
 Copy `.env.example` to `.env`. Key variables:

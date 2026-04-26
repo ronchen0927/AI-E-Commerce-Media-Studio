@@ -13,8 +13,11 @@ from app.schemas.video import StoryboardResponse, VideoScene
 logger = logging.getLogger(__name__)
 
 _SYSTEM_PROMPT = (
-    "You are an expert e-commerce video director. Analyze the product image and"
-    " generate a storyboard for a short marketing video.\n\n"
+    "You are an expert e-commerce video director creating prompts for an"
+    " image-to-video AI model (Wan i2v).\n\n"
+    "CRITICAL RULE: The uploaded image already defines ALL visual content — shape,"
+    " color, material, environment. Your prompt controls ONLY how things MOVE."
+    " NEVER describe what the product looks like. Only describe motion.\n\n"
     "Output ONLY valid JSON (no markdown fences, no commentary) matching this schema:\n"
     "{\n"
     '  "product_summary": "<one concise sentence describing the product>",\n'
@@ -22,21 +25,27 @@ _SYSTEM_PROMPT = (
     "    {\n"
     '      "id": <integer starting at 1>,\n'
     '      "shot_type": "<specific shot, e.g. Extreme macro close-up>",\n'
-    '      "camera_motion": "<specific motion, e.g. Slow dolly forward — ALWAYS'
-    ' required>",\n'
-    '      "visual_description": "<concrete visual details only, no abstract'
-    ' intent>",\n'
+    '      "camera_motion": "<specific motion, e.g. Slow counterclockwise orbit>",\n'
+    '      "visual_description": "<what part of the product is featured in this'
+    ' shot>",\n'
     '      "duration_seconds": <integer 4 to 8>,\n'
-    '      "prompt": "<AI video prompt, 40-80 words, English only>"\n'
+    '      "prompt": "<motion-only prompt, 40-80 words, English only>"\n'
     "    }\n"
     "  ]\n"
     "}\n\n"
-    "Prompt structure: [Camera angle + motion]. [Subject detail]. [Action]."
-    " [Scene/environment]. [Light source and quality]. [Lens/optics]."
-    " [Visual style]. [Color palette].\n"
-    "Rules: ALWAYS specify camera motion. ALWAYS specify light source."
-    " NEVER use intent language (no implying, representing, symbolizing)."
-    " Describe only what is SEEN. 40-80 words, English only."
+    "Prompt structure: [Subject motion] + [Camera movement] + [Environmental"
+    " effects] + [Speed/intensity modifier].\n\n"
+    "Subject motion — how the product itself moves: rotates clockwise, tilts"
+    " gently, sways, gleams, pulses with light.\n"
+    "Camera movement — ONE move only: slow dolly in, counterclockwise orbit,"
+    " pedestal up, slow pan, rack focus pull.\n"
+    "Environmental effects — adds dynamism (ALWAYS include at least one):"
+    " fine light particles drift upward, soft mist rises, bokeh orbs pulse,"
+    " rim light sweeps across surface, reflections shimmer and shift, fabric"
+    " ripples, liquid swirls.\n"
+    "Speed modifier: slow and fluid / smooth and continuous / gentle and organic.\n\n"
+    "Rules: ALWAYS include all three motion layers. ONE camera move per scene."
+    " NEVER describe color, shape, or appearance. 40-80 words, English only."
 )
 
 _TEMPLATE_SCENES = [
@@ -47,67 +56,63 @@ _TEMPLATE_SCENES = [
         visual_description="Product surface texture in extreme detail",
         duration_seconds=5,
         prompt=(
-            "Extreme macro close-up, slow dolly forward. Product surface with fine"
-            " texture detail. Camera drifts slowly toward surface. Neutral studio"
-            " environment. Soft diffused overhead light, no harsh shadows. Shallow"
-            " depth of field, sharp center focus. Cinematic product photography"
-            " aesthetic. Clean white and neutral tones."
+            "The product surface slowly rotates, revealing fine texture detail."
+            " Camera drifts forward at a glacial pace, closing in on the surface."
+            " A soft shimmer sweeps slowly across the surface from left to right."
+            " Smooth and fluid motion, slow pace."
         ),
     ),
     VideoScene(
         id=2,
         shot_type="Medium shot, three-quarter angle",
-        camera_motion="Slow 360-degree orbit",
-        visual_description="Full product rotating on a clean white surface",
+        camera_motion="Slow counterclockwise orbit",
+        visual_description="Full product on clean surface, all sides revealed",
         duration_seconds=6,
         prompt=(
-            "Medium shot, slow 360-degree orbit around product. Full product centered"
-            " on clean white surface. Product rotates slowly to reveal all sides. Soft"
-            " even studio lighting from above and both sides. No shadows. Standard"
-            " lens, neutral perspective. Clean commercial product photography style."
-            " Bright white palette."
+            "The product rotates clockwise on its base, slowly revealing all sides."
+            " Camera performs a slow counterclockwise orbit around the product."
+            " Soft reflections shimmer and shift across the surface as the angle"
+            " changes. Smooth and continuous motion at slow pace."
         ),
     ),
     VideoScene(
         id=3,
         shot_type="Low angle hero shot",
         camera_motion="Slow pedestal up",
-        visual_description="Product from below, dramatic upward perspective",
+        visual_description="Product viewed from below, rising upward perspective",
         duration_seconds=5,
         prompt=(
-            "Low angle hero shot, slow pedestal up. Product viewed from below against"
-            " bright background. Camera rises from ground level to eye level. Rim"
-            " lighting from behind creating soft halo around product edges. Wide angle"
-            " lens, dramatic perspective. Premium commercial aesthetic."
-            " High-contrast bright tones."
+            "The product stands still as the camera slowly rises from ground level"
+            " to eye level. Fine light particles drift upward from below the product."
+            " A rim light sweeps gently around the product edges, creating a shifting"
+            " halo. Slow and majestic motion."
         ),
     ),
     VideoScene(
         id=4,
         shot_type="Close-up, eye-level",
-        camera_motion="Slow rack focus",
-        visual_description="Product label or logo in sharp focus, background blurred",
+        camera_motion="Slow push-in with rack focus",
+        visual_description="Product label or logo area, transitioning to sharp focus",
         duration_seconds=5,
         prompt=(
-            "Close-up, eye-level, slow rack focus from background to foreground."
-            " Product label or logo transitions from blurred to tack-sharp. Soft"
-            " background light, foreground lit by single soft box from left. Shallow"
-            " depth of field, anamorphic lens. Luxury commercial aesthetic. Warm amber"
-            " and white tones."
+            "Camera slowly pushes in while rack focus pulls from background to the"
+            " product label, which transitions from blurred to tack-sharp."
+            " Background bokeh orbs slowly pulse and drift out of frame."
+            " A gentle gleam sweeps across the label surface. Slow, intimate motion."
         ),
     ),
     VideoScene(
         id=5,
         shot_type="Wide establishing shot",
         camera_motion="Slow pan left to right",
-        visual_description="Product displayed in lifestyle setting",
+        visual_description="Product in lifestyle setting with surrounding props",
         duration_seconds=6,
         prompt=(
-            "Wide establishing shot, slow pan left to right. Product displayed on"
-            " natural wood surface with minimal lifestyle props. Camera drifts slowly"
-            " across the scene. Warm natural window light from left, soft fill from"
-            " right. Standard lens. Warm lifestyle commercial aesthetic. Warm white"
-            " and natural wood tones."
+            "Camera drifts slowly from left to right across the scene."
+            " Nearby fabric or foliage sways gently in a soft breeze."
+            " Warm light shifts subtly, casting moving shadows across the surface."
+            " Fine dust particles float through the light beam in the foreground."
+            " Gentle and organic motion."
         ),
     ),
 ]

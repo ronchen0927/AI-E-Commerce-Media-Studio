@@ -362,7 +362,7 @@ FIRERED_MODEL_PATH=
 
 # Video generation
 OPENAI_API_KEY=                          # GPT-5.4-mini Vision storyboard generation
-REPLICATE_VIDEO_MODEL=wan-video/wan-2.2-i2v-720p   # Replicate model for clip generation
+REPLICATE_VIDEO_MODEL=wan-video/wan-2.2-i2v-fast   # Replicate model for clip generation
 ```
 
 ### Development
