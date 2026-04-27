@@ -46,7 +46,17 @@ _SYSTEM_PROMPT = (
     " floating particles, magical mist, or pulsing bokeh.\n"
     "Speed modifier: slow and fluid / smooth and continuous / gentle.\n\n"
     "Rules: ONE camera move per scene. Keep effects realistic and subtle."
-    " NEVER describe color, shape, or appearance. 40-80 words, English only."
+    " NEVER describe color, shape, or appearance. 40-80 words, English only.\n\n"
+    "Transition design (critical for smooth crossfades between clips):\n"
+    "1. Each scene must END at a natural visual pause point — product facing the"
+    " camera directly, camera reaching its final position, or a rotation completing"
+    " a full cycle. Never end mid-motion.\n"
+    "2. Motion must decelerate in the final second of each scene — the subject and"
+    " camera both slow to near-stillness before the cut. Reflect this in the prompt"
+    " with phrases like 'decelerates to a gentle stop', 'eases to stillness', or"
+    " 'comes to rest'.\n"
+    "3. Each scene may open with a brief ease-in from near-stillness before the main"
+    " motion begins."
 )
 
 _TEMPLATE_SCENES = [
@@ -60,7 +70,8 @@ _TEMPLATE_SCENES = [
             "The product surface slowly rotates, bringing fine texture detail into"
             " frame. Camera drifts forward at a glacial pace."
             " A highlight glides slowly across the glossy surface as the angle shifts."
-            " Smooth and fluid motion."
+            " Smooth and fluid motion, decelerating to a gentle stop as the product"
+            " faces the camera directly."
         ),
     ),
     VideoScene(
@@ -73,7 +84,8 @@ _TEMPLATE_SCENES = [
             "The product rotates clockwise on its base, slowly revealing all sides."
             " Camera performs a slow counterclockwise orbit."
             " Surface reflections shift naturally as the viewing angle changes."
-            " Smooth and continuous motion."
+            " Smooth and continuous motion, easing to stillness as the product"
+            " completes a full rotation and returns to its starting position."
         ),
     ),
     VideoScene(
@@ -85,7 +97,8 @@ _TEMPLATE_SCENES = [
         prompt=(
             "The product stands still as the camera slowly rises from ground level"
             " to eye level. The shadow cast by the product shrinks as the camera"
-            " climbs. Slow and steady motion."
+            " climbs. Slow and steady motion, decelerating to a gentle stop once"
+            " the camera reaches eye level."
         ),
     ),
     VideoScene(
@@ -98,7 +111,8 @@ _TEMPLATE_SCENES = [
             "Camera slowly pushes in while rack focus pulls from background to the"
             " product label, which transitions from blurred to tack-sharp."
             " The background gradually softens into smooth bokeh."
-            " Slow and intimate motion."
+            " Slow and intimate motion, easing to stillness once the label is"
+            " fully in focus and the camera has reached its closest position."
         ),
     ),
     VideoScene(
@@ -111,7 +125,8 @@ _TEMPLATE_SCENES = [
             "Camera drifts slowly from left to right across the scene."
             " A nearby fabric prop sways gently as if caught in a soft breeze."
             " Warm light shifts slightly, moving the shadow edges across the surface."
-            " Gentle and natural motion."
+            " Gentle and natural motion, decelerating to a stop once the product"
+            " is centered in frame."
         ),
     ),
 ]
